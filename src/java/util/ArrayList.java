@@ -160,7 +160,7 @@ public class ArrayList<E> extends AbstractList<E>
     }
 
     /**
-     * Constructs an empty list with an initial capacity of ten.
+     * 饿汉式初始化，无参构造不会初始化，在add方法中进行
      */
     public ArrayList() {
         this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
@@ -220,7 +220,14 @@ public class ArrayList<E> extends AbstractList<E>
         }
     }
 
+    /**
+     *
+     * @param elementData
+     * @param minCapacity
+     * @return
+     */
     private static int calculateCapacity(Object[] elementData, int minCapacity) {
+        //默认初始化容量为10，无参构造的情况下会使用默认值。扩容则是为size+1
         if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) {
             return Math.max(DEFAULT_CAPACITY, minCapacity);
         }
@@ -234,7 +241,7 @@ public class ArrayList<E> extends AbstractList<E>
     private void ensureExplicitCapacity(int minCapacity) {
         modCount++;
 
-        // overflow-conscious code
+        // 此判断是防止int类型溢出
         if (minCapacity - elementData.length > 0)
             grow(minCapacity);
     }
@@ -256,12 +263,13 @@ public class ArrayList<E> extends AbstractList<E>
     private void grow(int minCapacity) {
         // overflow-conscious code
         int oldCapacity = elementData.length;
+        //>>为右进位，可以理解为1/2的大小。old+(1/2)old就为原始大小的1.5倍
         int newCapacity = oldCapacity + (oldCapacity >> 1);
         if (newCapacity - minCapacity < 0)
             newCapacity = minCapacity;
         if (newCapacity - MAX_ARRAY_SIZE > 0)
             newCapacity = hugeCapacity(minCapacity);
-        // minCapacity is usually close to size, so this is a win:
+        //通过copy的方式来修改原数组容量
         elementData = Arrays.copyOf(elementData, newCapacity);
     }
 
