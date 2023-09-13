@@ -25,10 +25,11 @@
 
 package java.util;
 
+import sun.misc.SharedSecrets;
+
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
-import sun.misc.SharedSecrets;
 
 /**
  * Resizable-array implementation of the <tt>List</tt> interface.  Implements

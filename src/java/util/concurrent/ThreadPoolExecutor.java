@@ -908,15 +908,15 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
             if (rs >= SHUTDOWN &&
                 ! (rs == SHUTDOWN &&
                    firstTask == null &&
-                   ! workQueue.isEmpty()))
+                   ! workQueue.isEmpty())) // 线程池状态为shutdown状态下，不会再接受新的任务，在此前提下如果状态已经到了STOP、或者传入任务不为空、或者任务队列为空（已经没有积压任务）都不需要添加新的线程
                 return false;
 
             for (;;) {
                 int wc = workerCountOf(c);
                 if (wc >= CAPACITY ||
-                    wc >= (core ? corePoolSize : maximumPoolSize))
+                    wc >= (core ? corePoolSize : maximumPoolSize)) // 容量检查
                     return false;
-                if (compareAndIncrementWorkerCount(c))
+                if (compareAndIncrementWorkerCount(c)) // Cas更改运行的线程数，如果成功说明可以增加工作线程
                     break retry;
                 c = ctl.get();  // Re-read ctl
                 if (runStateOf(c) != rs)
@@ -954,7 +954,7 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
                     mainLock.unlock();
                 }
                 if (workerAdded) {
-                    t.start();
+                    t.start(); // 启动线程
                     workerStarted = true;
                 }
             }
@@ -1363,19 +1363,19 @@ public class ThreadPoolExecutor extends AbstractExecutorService {
          * and so reject the task.
          */
         int c = ctl.get();
-        if (workerCountOf(c) < corePoolSize) {
+        if (workerCountOf(c) < corePoolSize) { // 如果当前工作线程数小于corePoolSize，则直接添加核心工作线程:addWorker(command, true)
             if (addWorker(command, true))
                 return;
             c = ctl.get();
         }
-        if (isRunning(c) && workQueue.offer(command)) {
+        if (isRunning(c) && workQueue.offer(command)) { // 线程池状态为就绪且workersCount >= corePoolSize ,那么尝试把任务command加入等待队列
             int recheck = ctl.get();
-            if (! isRunning(recheck) && remove(command))
+            if (! isRunning(recheck) && remove(command)) // 再次进行检查，如果此时线程池状态非就绪了，则需要从队列中remove掉command，并且拒绝这次操作
                 reject(command);
-            else if (workerCountOf(recheck) == 0)
+            else if (workerCountOf(recheck) == 0) // 如果线程池还是就绪态，则添加一个空任务的线程，如果是空的话，线程池会从等待队列中分配任务给该线程
                 addWorker(null, false);
         }
-        else if (!addWorker(command, false))
+        else if (!addWorker(command, false)) // 如果workersCount >= corePoolSize，线程池非就绪态 或 排队失败，那么再尝试直接添加工作线程，如果还添加不了则拒绝
             reject(command);
     }
 
