@@ -176,7 +176,7 @@ public class CyclicBarrier {
      */
     private void nextGeneration() {
         // signal completion of last generation
-        trip.signalAll();
+        trip.signalAll(); // 唤醒条件队列所有节点
         // set up next generation
         count = parties;
         generation = new Generation();
@@ -199,7 +199,7 @@ public class CyclicBarrier {
         throws InterruptedException, BrokenBarrierException,
                TimeoutException {
         final ReentrantLock lock = this.lock;
-        lock.lock();
+        lock.lock(); // reentrantLock上锁
         try {
             final Generation g = generation;
 
@@ -211,15 +211,15 @@ public class CyclicBarrier {
                 throw new InterruptedException();
             }
 
-            int index = --count;
-            if (index == 0) {  // tripped
+            int index = --count; // 资源数count--
+            if (index == 0) {  // tripped  当资源数减为0的时候,则执行任务,并且进入下一代
                 boolean ranAction = false;
                 try {
                     final Runnable command = barrierCommand;
                     if (command != null)
-                        command.run();
+                        command.run(); // 执行任务
                     ranAction = true;
-                    nextGeneration();
+                    nextGeneration(); // 处理当前代的操作,并且进入下一代
                     return 0;
                 } finally {
                     if (!ranAction)
@@ -231,7 +231,7 @@ public class CyclicBarrier {
             for (;;) {
                 try {
                     if (!timed)
-                        trip.await();
+                        trip.await(); // 把当前线程加入到条件队列中并且阻塞.会释放掉自己所有的锁(比如使用了2把,就释放2)
                     else if (nanos > 0L)
                         nanos = trip.awaitNanos(nanos);
                 } catch (InterruptedException ie) {
@@ -278,7 +278,7 @@ public class CyclicBarrier {
         if (parties <= 0) throw new IllegalArgumentException();
         this.parties = parties;
         this.count = parties;
-        this.barrierCommand = barrierAction;
+        this.barrierCommand = barrierAction; // 足够数量的任务通过栅栏之后,执行的任务
     }
 
     /**

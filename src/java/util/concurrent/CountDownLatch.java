@@ -170,7 +170,7 @@ public class CountDownLatch {
         }
 
         protected int tryAcquireShared(int acquires) {
-            return (getState() == 0) ? 1 : -1;
+            return (getState() == 0) ? 1 : -1; // 仅判断state,为0则获取成功
         }
 
         protected boolean tryReleaseShared(int releases) {
@@ -179,8 +179,8 @@ public class CountDownLatch {
                 int c = getState();
                 if (c == 0)
                     return false;
-                int nextc = c-1;
-                if (compareAndSetState(c, nextc))
+                int nextc = c-1; // 每次只-1,仅释放1
+                if (compareAndSetState(c, nextc)) // cas设置state,如果设置后state为0,说明锁空闲
                     return nextc == 0;
             }
         }
@@ -197,7 +197,7 @@ public class CountDownLatch {
      */
     public CountDownLatch(int count) {
         if (count < 0) throw new IllegalArgumentException("count < 0");
-        this.sync = new Sync(count);
+        this.sync = new Sync(count); // 设置state的值为count,后续用count表示资源数量
     }
 
     /**
@@ -228,7 +228,7 @@ public class CountDownLatch {
      *         while waiting
      */
     public void await() throws InterruptedException {
-        sync.acquireSharedInterruptibly(1);
+        sync.acquireSharedInterruptibly(1); // 获取共享锁,获取不到则阻塞
     }
 
     /**

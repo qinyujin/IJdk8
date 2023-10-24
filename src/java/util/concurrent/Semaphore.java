@@ -179,7 +179,7 @@ public class Semaphore implements java.io.Serializable {
                 int available = getState();
                 int remaining = available - acquires;
                 if (remaining < 0 ||
-                    compareAndSetState(available, remaining))
+                    compareAndSetState(available, remaining)) // cas设置state成功或者到达到达边界就返回
                     return remaining;
             }
         }
@@ -190,7 +190,7 @@ public class Semaphore implements java.io.Serializable {
                 int next = current + releases;
                 if (next < current) // overflow
                     throw new Error("Maximum permit count exceeded");
-                if (compareAndSetState(current, next))
+                if (compareAndSetState(current, next)) // cas设置state,释放锁
                     return true;
             }
         }
@@ -242,7 +242,7 @@ public class Semaphore implements java.io.Serializable {
 
         protected int tryAcquireShared(int acquires) {
             for (;;) {
-                if (hasQueuedPredecessors())
+                if (hasQueuedPredecessors()) // 公平获取共享锁会先看是否有排队.有则不抢锁
                     return -1;
                 int available = getState();
                 int remaining = available - acquires;
@@ -262,7 +262,7 @@ public class Semaphore implements java.io.Serializable {
      *        must occur before any acquires will be granted.
      */
     public Semaphore(int permits) {
-        sync = new NonfairSync(permits);
+        sync = new NonfairSync(permits); // 设置state为permits.资源数量
     }
 
     /**
