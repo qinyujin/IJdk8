@@ -218,7 +218,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
      *         than 1
      */
     public PriorityBlockingQueue(int initialCapacity,
-                                 Comparator<? super E> comparator) {
+                                 Comparator<? super E> comparator) { // 可以自定义排序规则,默认按照小顶堆的方式排序
         if (initialCapacity < 1)
             throw new IllegalArgumentException();
         this.lock = new ReentrantLock();
@@ -356,7 +356,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
      */
     private static <T> void siftUpComparable(int k, T x, Object[] array) {
         Comparable<? super T> key = (Comparable<? super T>) x;
-        while (k > 0) {
+        while (k > 0) { // 小顶堆.leetcode有类似的题
             int parent = (k - 1) >>> 1;
             Object e = array[parent];
             if (key.compareTo((T) e) >= 0)
@@ -483,15 +483,15 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         int n, cap;
         Object[] array;
         while ((n = size) >= (cap = (array = queue).length))
-            tryGrow(array, cap);
+            tryGrow(array, cap); // 扩容操作.由于存在扩容,所以put不可能用完队列,因此不存在阻塞
         try {
             Comparator<? super E> cmp = comparator;
             if (cmp == null)
-                siftUpComparable(n, e, array);
+                siftUpComparable(n, e, array); // 默认排序器是构造小顶堆结构
             else
-                siftUpUsingComparator(n, e, array, cmp);
+                siftUpUsingComparator(n, e, array, cmp); // 指定了排序器
             size = n + 1;
-            notEmpty.signal();
+            notEmpty.signal(); // put了之后唤醒take线程(这里的唤醒的说法只是为了方便,实际上唤醒时刻都是在unlock,条件队列的signal只是移动元素到同步等待队列)
         } finally {
             lock.unlock();
         }
@@ -546,7 +546,7 @@ public class PriorityBlockingQueue<E> extends AbstractQueue<E>
         lock.lockInterruptibly();
         E result;
         try {
-            while ( (result = dequeue()) == null)
+            while ( (result = dequeue()) == null) // 出队,队空阻塞塔take
                 notEmpty.await();
         } finally {
             lock.unlock();

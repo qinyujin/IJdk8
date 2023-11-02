@@ -108,7 +108,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      */
 
     /** Main lock guarding all access */
-    final ReentrantLock lock;
+    final ReentrantLock lock; // put和take都使用这同一把锁
 
     /** Condition for waiting takes */
     private final Condition notEmpty;
@@ -158,11 +158,11 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         // assert lock.getHoldCount() == 1;
         // assert items[putIndex] == null;
         final Object[] items = this.items;
-        items[putIndex] = x;
-        if (++putIndex == items.length)
+        items[putIndex] = x; // putIndex的初始值就是操作的位置
+        if (++putIndex == items.length) // 队列的index操作,到头了就回去
             putIndex = 0;
         count++;
-        notEmpty.signal();
+        notEmpty.signal(); // 唤醒take线程
     }
 
     /**
@@ -236,7 +236,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      * @throws IllegalArgumentException if {@code capacity < 1}
      */
     public ArrayBlockingQueue(int capacity) {
-        this(capacity, false);
+        this(capacity, false); // 有界队列
     }
 
     /**
@@ -350,10 +350,10 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         lock.lockInterruptibly();
         try {
             while (count == items.length)
-                notFull.await();
-            enqueue(e);
+                notFull.await(); // 当队列满了,则不能再put了,线程放入条件队列中
+            enqueue(e); // 队列未满则入队操作,同时会把take等待队列里的线程移动到同步等待队列中
         } finally {
-            lock.unlock();
+            lock.unlock(); // 唤醒上面take的线程
         }
     }
 
@@ -399,9 +399,9 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         final ReentrantLock lock = this.lock;
         lock.lockInterruptibly();
         try {
-            while (count == 0)
+            while (count == 0) // 队列空则阻塞take线程
                 notEmpty.await();
-            return dequeue();
+            return dequeue(); // 出队,同时移动put线程->同步等待队列
         } finally {
             lock.unlock();
         }

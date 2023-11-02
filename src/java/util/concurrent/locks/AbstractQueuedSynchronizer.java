@@ -1463,7 +1463,7 @@ public abstract class AbstractQueuedSynchronizer
         return (h = head) != null &&
             (s = h.next)  != null &&
             !s.isShared()         &&
-            s.thread != null;
+            s.thread != null; // 队首是独占模式的线程
     }
 
     /**

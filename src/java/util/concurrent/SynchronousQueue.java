@@ -534,11 +534,11 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
          */
 
         /** Node class for TransferQueue. */
-        static final class QNode {
-            volatile QNode next;          // next node in queue
-            volatile Object item;         // CAS'ed to or from null
-            volatile Thread waiter;       // to control park/unpark
-            final boolean isData;
+        static final class QNode { // 单向链表,也可以看成是队列
+            volatile QNode next;          // 链表中的下一个节点
+            volatile Object item;         // 数据
+            volatile Thread waiter;       // 当前线程,可以对它阻塞/唤醒
+            final boolean isData;         // 有request(0)和data(1)。分别代表take和put
 
             QNode(Object item, boolean isData) {
                 this.item = item;
@@ -676,7 +676,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                 if (t == null || h == null)         // saw uninitialized value
                     continue;                       // spin
 
-                if (h == t || t.isData == isData) { // empty or same-mode
+                if (h == t || t.isData == isData) { // 当队列为空或者当前模式和队尾节点模式相同.这里的模式可能是put或take
                     QNode tn = t.next;
                     if (t != tail)                  // inconsistent read
                         continue;
@@ -687,12 +687,12 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                     if (timed && nanos <= 0)        // can't wait
                         return null;
                     if (s == null)
-                        s = new QNode(e, isData);
+                        s = new QNode(e, isData); // 初始化
                     if (!t.casNext(null, s))        // failed to link in
                         continue;
 
                     advanceTail(t, s);              // swing tail and wait
-                    Object x = awaitFulfill(s, e, timed, nanos);
+                    Object x = awaitFulfill(s, e, timed, nanos); // 阻塞当前线程直到条件满足.比如当前是take,那么有put线程就可以满足它的条件
                     if (x == s) {                   // wait was cancelled
                         clean(t, s);
                         return null;
@@ -706,21 +706,21 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                     }
                     return (x != null) ? (E)x : e;
 
-                } else {                            // complementary-mode
-                    QNode m = h.next;               // node to fulfill
+                } else {                            // 互补模式,和队尾模式不同的模式,可能是take或put
+                    QNode m = h.next;               // 队首节点
                     if (t != tail || m == null || h != head)
                         continue;                   // inconsistent read
 
                     Object x = m.item;
                     if (isData == (x != null) ||    // m already fulfilled
                         x == m ||                   // m cancelled
-                        !m.casItem(x, e)) {         // lost CAS
+                        !m.casItem(x, e)) {         // cas传递值操作,可能是put->take也可能相反,put->take传的值是e,而take->put传的值是null
                         advanceHead(h, m);          // dequeue and retry
                         continue;
                     }
 
                     advanceHead(h, m);              // successfully fulfilled
-                    LockSupport.unpark(m.waiter);
+                    LockSupport.unpark(m.waiter); // 传递值之后就完成任务了,可以唤醒队首节点,该节点在另一个分支阻塞了
                     return (x != null) ? (E)x : e;
                 }
             }
@@ -740,11 +740,11 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
             final long deadline = timed ? System.nanoTime() + nanos : 0L;
             Thread w = Thread.currentThread();
             int spins = ((head.next == s) ?
-                         (timed ? maxTimedSpins : maxUntimedSpins) : 0);
+                         (timed ? maxTimedSpins : maxUntimedSpins) : 0); // 判断自旋次数
             for (;;) {
                 if (w.isInterrupted())
                     s.tryCancel(e);
-                Object x = s.item;
+                Object x = s.item; // 如果传值成功了,x的值和e不相等,即可以返回了
                 if (x != e)
                     return x;
                 if (timed) {
@@ -759,7 +759,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                 else if (s.waiter == null)
                     s.waiter = w;
                 else if (!timed)
-                    LockSupport.park(this);
+                    LockSupport.park(this); // 阻塞当前线程
                 else if (nanos > spinForTimeoutThreshold)
                     LockSupport.parkNanos(this, nanos);
             }
@@ -861,7 +861,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
      * @param fair if true, waiting threads contend in FIFO order for
      *        access; otherwise the order is unspecified.
      */
-    public SynchronousQueue(boolean fair) {
+    public SynchronousQueue(boolean fair) { // 默认非公平.公平使用队列,非公平使用栈
         transferer = fair ? new TransferQueue<E>() : new TransferStack<E>();
     }
 

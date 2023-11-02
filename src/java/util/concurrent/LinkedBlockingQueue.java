@@ -152,7 +152,7 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
     private transient Node<E> last;
 
     /** Lock held by take, poll, etc */
-    private final ReentrantLock takeLock = new ReentrantLock();
+    private final ReentrantLock takeLock = new ReentrantLock(); // take和put分别使用两把锁,可提高吞吐量
 
     /** Wait queue for waiting takes */
     private final Condition notEmpty = takeLock.newCondition();
@@ -346,17 +346,17 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
              * signalled if it ever changes from capacity. Similarly
              * for all other uses of count in other wait guards.
              */
-            while (count.get() == capacity) {
+            while (count.get() == capacity) { // 队满阻塞put
                 notFull.await();
             }
-            enqueue(node);
+            enqueue(node); // 单纯的入队
             c = count.getAndIncrement();
-            if (c + 1 < capacity)
+            if (c + 1 < capacity) // 在take中只有队满的时候才会唤醒put线程,这里补全,当队非空时唤醒(并发情况下有可能是其他线程导致的put阻塞)
                 notFull.signal();
         } finally {
             putLock.unlock();
         }
-        if (c == 0)
+        if (c == 0) // 队空,但刚put了一个元素,则唤醒take线程
             signalNotEmpty();
     }
 
@@ -438,17 +438,17 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
         final ReentrantLock takeLock = this.takeLock;
         takeLock.lockInterruptibly();
         try {
-            while (count.get() == 0) {
+            while (count.get() == 0) { // 队空则阻塞take
                 notEmpty.await();
             }
             x = dequeue();
             c = count.getAndDecrement();
-            if (c > 1)
+            if (c > 1) // put中只有队空的时候才会唤醒take,这里补全
                 notEmpty.signal();
         } finally {
             takeLock.unlock();
         }
-        if (c == capacity)
+        if (c == capacity) // 队满时,刚take掉一个,就唤醒put
             signalNotFull();
         return x;
     }
